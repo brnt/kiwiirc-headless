@@ -8,7 +8,11 @@ import typingMiddleware from './TypingMiddleware';
 import chathistoryMiddleware from './ChathistoryMiddleware';
 import * as ServerConnection from './ServerConnection';
 
-export function create(state, network) {
+export function create(state, network, options = {}) {
+    // Allow formatter to be injected, default to TextFormatting for backward compatibility
+    const formatter = options.formatter || TextFormatting;
+    // Allow transport to be injected
+    const transport = options.transport;
     let networkid = network.id;
 
     let ircClient = new Irc.Client({
@@ -20,7 +24,7 @@ export function create(state, network) {
     });
     ircClient.requestCap('znc.in/self-message');
     ircClient.use(chathistoryMiddleware());
-    ircClient.use(clientMiddleware(state, network));
+    ircClient.use(clientMiddleware(state, network, formatter));
     ircClient.use(typingMiddleware());
 
     // Overload the connect() function to make sure we are connecting with the
@@ -63,7 +67,10 @@ export function create(state, network) {
         let eventObj = { network, transport: null };
         state.$emit('network.connecting', eventObj);
 
-        if (eventObj.transport) {
+        if (transport) {
+            // Use provided transport (for headless client)
+            ircClient.options.transport = transport;
+        } else if (eventObj.transport) {
             // A plugin might use its own transport of some kind
             ircClient.options.transport = eventObj.transport;
         } else if (!network.connection.direct) {
@@ -139,11 +146,13 @@ export function create(state, network) {
     return ircClient;
 }
 
-function clientMiddleware(state, network) {
+function clientMiddleware(state, network, formatter) {
     let networkid = network.id;
     // eslint-disable-next-line
     let numConnects = 0;
     let isRegistered = false;
+    // Use provided formatter or default to TextFormatting for backward compatibility
+    const textFormatter = formatter || TextFormatting;
 
     return function middlewareFn(client, rawEvents, parsedEvents) {
         parsedEvents.use(parsedEventsHandler);
@@ -269,7 +278,7 @@ function clientMiddleware(state, network) {
                 time: eventTime,
                 server_time: serverTime,
                 nick: '',
-                message: TextFormatting.t('connected_to', { network: client.network.name }),
+                message: textFormatter.t('connected_to', { network: client.network.name }),
             });
 
             // Get some extra info about ourselves
@@ -462,7 +471,7 @@ function clientMiddleware(state, network) {
                 textFormatType = 'notice';
             }
 
-            let messageBody = TextFormatting.formatText(textFormatType, {
+            let messageBody = textFormatter.formatText(textFormatType, {
                 nick: event.nick,
                 username: event.ident,
                 host: event.hostname,
@@ -521,7 +530,7 @@ function clientMiddleware(state, network) {
 
         if (command === 'wallops') {
             let buffer = state.getOrAddBufferByName(networkid, '*');
-            let messageBody = TextFormatting.formatText('wallops', {
+            let messageBody = textFormatter.formatText('wallops', {
                 text: event.message,
             });
 
@@ -572,10 +581,10 @@ function clientMiddleware(state, network) {
             let ignoreEvent = state.setting('skipHiddenMessages') && !buffer.setting('show_joinparts');
             if (!ignoreEvent || event.nick === client.user.nick) {
                 let nick = buffer.setting('show_hostnames') ?
-                    TextFormatting.formatUserFull(event) :
-                    TextFormatting.formatUser(event);
+                    textFormatter.formatUserFull(event) :
+                    textFormatter.formatUser(event);
 
-                let messageBody = TextFormatting.formatAndT(
+                let messageBody = textFormatter.formatAndT(
                     'channel_join',
                     null,
                     'has_joined',
@@ -609,24 +618,24 @@ function clientMiddleware(state, network) {
             let isUserInvolved = [event.kicked, event.nick].includes(client.user.nick);
             if (!ignoreEvent || isUserInvolved) {
                 if (event.kicked === client.user.nick) {
-                    messageBody = TextFormatting.formatAndT(
+                    messageBody = textFormatter.formatAndT(
                         'channel_selfkick',
                         { reason: event.message },
                         'kicked_you_from',
                         {
-                            nick: TextFormatting.formatUser(event),
+                            nick: textFormatter.formatUser(event),
                             channel: event.channel,
                         }
                     );
                 } else {
-                    messageBody = TextFormatting.formatAndT(
+                    messageBody = textFormatter.formatAndT(
                         'channel_kicked',
                         { reason: event.message },
                         'was_kicked_from',
                         {
                             nick: event.kicked,
                             channel: event.channel,
-                            chanop: TextFormatting.formatUser(event.nick),
+                            chanop: textFormatter.formatUser(event.nick),
                         }
                     );
                 }
@@ -667,10 +676,10 @@ function clientMiddleware(state, network) {
             let ignoreEvent = state.setting('skipHiddenMessages') && !buffer.setting('show_joinparts');
             if (!ignoreEvent || event.nick === client.user.nick) {
                 let nick = buffer.setting('show_hostnames') ?
-                    TextFormatting.formatUserFull(event) :
-                    TextFormatting.formatUser(event);
+                    textFormatter.formatUserFull(event) :
+                    textFormatter.formatUser(event);
 
-                let messageBody = TextFormatting.formatAndT(
+                let messageBody = textFormatter.formatAndT(
                     'channel_part',
                     { reason: event.message },
                     'has_left',
@@ -708,10 +717,10 @@ function clientMiddleware(state, network) {
                 }
 
                 let nick = buffer.setting('show_hostnames') ?
-                    TextFormatting.formatUserFull(event) :
-                    TextFormatting.formatUser(event);
+                    textFormatter.formatUserFull(event) :
+                    textFormatter.formatUser(event);
 
-                let messageBody = TextFormatting.formatAndT(
+                let messageBody = textFormatter.formatAndT(
                     'channel_quit',
                     { reason: event.message },
                     'has_left',
@@ -761,7 +770,7 @@ function clientMiddleware(state, network) {
                 time: eventTime,
                 server_time: serverTime,
                 type: 'invite',
-                message: TextFormatting.t(translationKey, {
+                message: textFormatter.t(translationKey, {
                     nick: event.nick,
                     invited: event.invited,
                     channel: event.channel,
@@ -893,7 +902,7 @@ function clientMiddleware(state, network) {
 
         if (command === 'motd') {
             let buffer = network.serverBuffer();
-            let messageBody = TextFormatting.formatText('motd', {
+            let messageBody = textFormatter.formatText('motd', {
                 text: event.motd,
             });
             state.addMessage(buffer, {
@@ -915,7 +924,7 @@ function clientMiddleware(state, network) {
                 newnick: newNick,
             };
 
-            let messageBody = TextFormatting.formatAndT(
+            let messageBody = textFormatter.formatAndT(
                 'nickname_alreadyinuse',
                 null,
                 translationKey,
@@ -955,7 +964,7 @@ function clientMiddleware(state, network) {
 
             state.changeUserNick(networkid, event.nick, event.new_nick);
 
-            let messageBody = TextFormatting.formatAndT(
+            let messageBody = textFormatter.formatAndT(
                 'nick_changed',
                 null,
                 'now_known_as',
@@ -1201,9 +1210,9 @@ function clientMiddleware(state, network) {
 
                     // Translate using the built locale data
                     let localeKey = modeLocaleIds[mode] || 'modes_other';
-                    let text = TextFormatting.t(localeKey, localeData);
+                    let text = textFormatter.t(localeKey, localeData);
 
-                    let messageBody = TextFormatting.formatText('mode', {
+                    let messageBody = textFormatter.formatText('mode', {
                         nick: event.nick,
                         username: event.ident,
                         host: event.hostname,
@@ -1278,12 +1287,12 @@ function clientMiddleware(state, network) {
 
                 let serverBuffer = network.serverBuffer();
                 _.each(modeslines, (mode, value) => {
-                    let text = TextFormatting.t('modes_other', {
+                    let text = textFormatter.t('modes_other', {
                         nick: event.nick,
                         target: event.target,
                         mode: value + mode,
                     });
-                    let messageBody = TextFormatting.formatText('mode', {
+                    let messageBody = textFormatter.formatText('mode', {
                         nick: event.nick,
                         username: event.ident,
                         host: event.hostname,
@@ -1313,10 +1322,10 @@ function clientMiddleware(state, network) {
                 if (targetBuffer === serverBuffer) {
                     banText += event.channel + '  ';
                 }
-                banText += TextFormatting.t('banned') + ' [+b]\x02\n';
+                banText += textFormatter.t('banned') + ' [+b]\x02\n';
 
                 if (!event.bans || event.bans.length === 0) {
-                    banText += TextFormatting.t('bans_nobody');
+                    banText += textFormatter.t('bans_nobody');
                 } else {
                     _.each(event.bans, (ban) => {
                         let dateStr = (new Date(ban.banned_at * 1000)).toLocaleDateString();
@@ -1349,10 +1358,10 @@ function clientMiddleware(state, network) {
                 if (targetBuffer === serverBuffer) {
                     inviteText += event.channel + '  ';
                 }
-                inviteText += TextFormatting.t('invited') + ' [+I]\x02\n';
+                inviteText += textFormatter.t('invited') + ' [+I]\x02\n';
 
                 if (!event.invites || event.invites.length === 0) {
-                    inviteText += TextFormatting.t('invited_nobody');
+                    inviteText += textFormatter.t('invited_nobody');
                 } else {
                     _.each(event.invites, (invite) => {
                         let dateStr = (new Date(invite.invited_at * 1000)).toLocaleDateString();
@@ -1386,7 +1395,7 @@ function clientMiddleware(state, network) {
                 buffer.topic_when = event.time || Date.now();
 
                 typeExtra = 'topic_change';
-                messageBody = TextFormatting.formatAndT(
+                messageBody = textFormatter.formatAndT(
                     'channel_topic',
                     null,
                     'changed_topic_to',
@@ -1394,7 +1403,7 @@ function clientMiddleware(state, network) {
                 );
             } else if (buffer.topic.trim()) {
                 typeExtra = 'topic_join';
-                messageBody = TextFormatting.formatText('channel_topic', buffer.topic);
+                messageBody = textFormatter.formatText('channel_topic', buffer.topic);
             }
 
             if (messageBody) {
@@ -1434,7 +1443,7 @@ function clientMiddleware(state, network) {
             let textFormatId = command === 'ctcp response' ?
                 'ctcp_response' :
                 'ctcp_request';
-            let messageBody = TextFormatting.formatText(textFormatId, {
+            let messageBody = textFormatter.formatText(textFormatId, {
                 nick: event.nick,
                 message: event.message,
                 type: event.type,
@@ -1457,7 +1466,7 @@ function clientMiddleware(state, network) {
         }
 
         if (command === 'nick invalid') {
-            let messageBody = TextFormatting.formatText('general_error', {
+            let messageBody = textFormatter.formatText('general_error', {
                 text: event.reason,
             });
             let buffer = state.getActiveBuffer();
@@ -1489,7 +1498,7 @@ function clientMiddleware(state, network) {
                 buffers.push(activeBuffer);
             }
 
-            let messageBody = TextFormatting.formatAndT(
+            let messageBody = textFormatter.formatAndT(
                 'notice',
                 null,
                 translationKey,
@@ -1507,7 +1516,7 @@ function clientMiddleware(state, network) {
         }
 
         if (command === 'sasl failed') {
-            let failMessage = TextFormatting.formatAndT(
+            let failMessage = textFormatter.formatAndT(
                 'general_error',
                 null,
                 'login_failed'
@@ -1558,7 +1567,7 @@ function clientMiddleware(state, network) {
 
             if (event.error && !isRegistered) {
                 if (event.error === 'password_mismatch') {
-                    network.last_error = TextFormatting.t('error_password_mismatch');
+                    network.last_error = textFormatter.t('error_password_mismatch');
                 }
             }
 
@@ -1577,7 +1586,7 @@ function clientMiddleware(state, network) {
                     messageRaw = `${messageRaw} "${event.command}"`;
                 }
 
-                let messageBody = TextFormatting.formatText('general_error', {
+                let messageBody = textFormatter.formatText('general_error', {
                     text: messageRaw,
                 });
 

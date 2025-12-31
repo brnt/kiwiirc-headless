@@ -1,0 +1,39 @@
+{
+    "name": "@kiwiirc/headless-client",
+    "version": "1.7.1",
+    "description": "A standalone, browser-based IRC client library extracted from KiwiIRC. Provides a clean, Vue-free API for building custom IRC UIs.",
+    "main": "../../dist/headless/kiwi-headless-client.js",
+    "types": "index.d.ts",
+    "files": [
+        "../../dist/headless/kiwi-headless-client.js",
+        "../../dist/headless/kiwi-headless-client.js.map",
+        "index.d.ts",
+        "README.md"
+    ],
+    "keywords": [
+        "irc",
+        "irc-client",
+        "headless",
+        "browser",
+        "websocket",
+        "chat"
+    ],
+    "author": "Darren <darren@darrenwhitlen.com>",
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/brnt/kiwiirc-headless.git"
+    },
+    "peerDependencies": {
+        "irc-framework": "^4.14.0",
+        "lodash": "^4.17.21"
+    },
+    "peerDependenciesMeta": {
+        "irc-framework": {
+            "optional": false
+        },
+        "lodash": {
+            "optional": false
+        }
+    }
+}
