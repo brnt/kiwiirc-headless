@@ -1,14 +1,10 @@
 'kiwi public';
 
-import _ from 'lodash';
-import Irc from 'irc-framework';
 import EventEmitter from './EventEmitter';
 import StateAdapter from './StateAdapter';
 import { PlainTextFormatter } from './Formatter';
 import { Events } from './Events';
-import typingMiddleware from '../TypingMiddleware';
-import chathistoryMiddleware from '../ChathistoryMiddleware';
-import * as IrcClientCore from '../IrcClient';
+import * as IrcClientCore from '@/libs/IrcClient';
 
 /**
  * Headless IRC Client
@@ -60,6 +56,7 @@ export default class HeadlessIrcClient extends EventEmitter {
         this.network.nick = this.nick;
         this.network.username = this.username;
         this.network.gecos = this.gecos;
+        this.network.password = this.password; // Store password for SASL
         this.network.auto_commands = options.autoCommands || '';
 
         // Apply settings
@@ -90,15 +87,9 @@ export default class HeadlessIrcClient extends EventEmitter {
             addBufferHelpers(buffer);
             return buffer;
         };
-        network.currentUser = () => {
-            return stateAdapter.getUser(self.networkId, network.nick);
-        };
-        network.userByName = (nick) => {
-            return stateAdapter.getUser(self.networkId, nick);
-        };
-        network.isChannelName = (name) => {
-            return self.isChannelName(name);
-        };
+        network.currentUser = () => stateAdapter.getUser(self.networkId, network.nick);
+        network.userByName = (nick) => stateAdapter.getUser(self.networkId, nick);
+        network.isChannelName = (name) => self.isChannelName(name);
         network.isNickExemptFromPmBlocks = (nick) => {
             // Simplified version - check if user is an operator
             const user = stateAdapter.getUser(self.networkId, nick);
@@ -107,11 +98,12 @@ export default class HeadlessIrcClient extends EventEmitter {
             }
             // Check if user is op in any shared channel
             const buffers = stateAdapter.getBuffersWithUser(self.networkId, nick);
-            for (const buffer of buffers) {
+            const isOpInAnyBuffer = buffers.some((buffer) => {
                 const bufferUser = buffer.users[nick.toLowerCase()];
-                if (bufferUser && bufferUser.modes && bufferUser.modes.includes('o')) {
-                    return true;
-                }
+                return bufferUser && bufferUser.modes && bufferUser.modes.includes('o');
+            });
+            if (isOpInAnyBuffer) {
+                return true;
             }
             return null; // Requires check
         };
@@ -133,21 +125,11 @@ export default class HeadlessIrcClient extends EventEmitter {
         // Add buffer helper methods
         const addBufferHelpers = (buffer) => {
             if (!buffer) return;
-            buffer.isChannel = () => {
-                return self.isChannelName(buffer.name);
-            };
-            buffer.isQuery = () => {
-                return !buffer.isChannel() && buffer.name !== '*';
-            };
-            buffer.isServer = () => {
-                return buffer.name === '*';
-            };
-            buffer.isSpecial = () => {
-                return buffer.name === '*' || buffer.name.startsWith('*');
-            };
-            buffer.isRaw = () => {
-                return buffer.name === '*raw';
-            };
+            buffer.isChannel = () => self.isChannelName(buffer.name);
+            buffer.isQuery = () => !buffer.isChannel() && buffer.name !== '*';
+            buffer.isServer = () => buffer.name === '*';
+            buffer.isSpecial = () => buffer.name === '*' || buffer.name.startsWith('*');
+            buffer.isRaw = () => buffer.name === '*raw';
             buffer.setting = (name, val) => {
                 if (typeof val !== 'undefined') {
                     if (!buffer.settings) {
@@ -176,22 +158,20 @@ export default class HeadlessIrcClient extends EventEmitter {
                 const user = buffer.users[nick.toLowerCase()];
                 return user && user.modes && user.modes.includes('o');
             };
-            buffer.hasNick = (nick) => {
-                return !!buffer.users[nick.toLowerCase()];
-            };
+            buffer.hasNick = (nick) => !!buffer.users[nick.toLowerCase()];
             buffer.flag = (name, value) => {
                 if (typeof value !== 'undefined') {
                     if (!buffer.flags) {
                         buffer.flags = {};
                     }
                     buffer.flags[name] = value;
-                } else {
-                    return buffer.flags ? buffer.flags[name] : undefined;
+                    return value;
                 }
+                return buffer.flags ? buffer.flags[name] : undefined;
             };
             buffer.requestLatestScrollback = () => {
                 // Placeholder for chathistory scrollback request
-                // Can be implemented if needed
+                // The underlying IrcClientCore handles this via chathistoryMiddleware
             };
         };
 
@@ -334,7 +314,7 @@ export default class HeadlessIrcClient extends EventEmitter {
         }
 
         // Create IRC client using the existing IrcClient.create function
-        // We'll need to modify it to work with our state adapter
+        // with our adapted state, formatter, and transport
         this.ircClient = this.createIrcClient();
         this.ircClient.connect();
     }
@@ -378,13 +358,10 @@ export default class HeadlessIrcClient extends EventEmitter {
             if (this.transport) {
                 ircClient.options.transport = this.transport;
             } else if (!this.direct) {
-                // For non-direct connections, we'd need ServerConnection
-                // For now, default to direct
+                // For non-direct connections via Kiwi server, ServerConnection would be needed
+                // Since headless client defaults to direct connections, this path is rarely used
                 ircClient.options.transport = undefined;
             }
-
-            // Emit connecting event
-            this.emit(Events.CONNECTING);
 
             originalConnect.apply(ircClient, args);
         };

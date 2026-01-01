@@ -6,28 +6,28 @@
 /**
  * Event types emitted by the Headless IRC Client
  */
-export enum Events {
+export declare const Events: {
     /** Emitted when connecting to the server */
-    CONNECTING = 'connecting',
+    readonly CONNECTING: 'connecting';
     /** Emitted when connected to the server (before registration) */
-    CONNECTED = 'connected',
+    readonly CONNECTED: 'connected';
     /** Emitted when registered with the server */
-    REGISTERED = 'registered',
+    readonly REGISTERED: 'registered';
     /** Emitted when disconnected from the server */
-    DISCONNECTED = 'disconnected',
+    readonly DISCONNECTED: 'disconnected';
     /** Emitted when a message is received */
-    MESSAGE = 'message',
+    readonly MESSAGE: 'message';
     /** Emitted when a user is added to the network */
-    USER_ADDED = 'user-added',
+    readonly USER_ADDED: 'user-added';
     /** Emitted when a user is removed from the network */
-    USER_REMOVED = 'user-removed',
+    readonly USER_REMOVED: 'user-removed';
     /** Emitted when a user joins a buffer/channel */
-    USER_JOINED_BUFFER = 'user-joined-buffer',
+    readonly USER_JOINED_BUFFER: 'user-joined-buffer';
     /** Emitted when a user leaves a buffer/channel */
-    USER_LEFT_BUFFER = 'user-left-buffer',
+    readonly USER_LEFT_BUFFER: 'user-left-buffer';
     /** Emitted when a user changes their nickname */
-    USER_NICK_CHANGED = 'user-nick-changed',
-}
+    readonly USER_NICK_CHANGED: 'user-nick-changed';
+};
 
 /**
  * List of all event names as an array

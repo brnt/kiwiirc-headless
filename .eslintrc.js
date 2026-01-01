@@ -4,36 +4,33 @@ rulesDirPlugin.RULES_DIR = 'build/eslint/rules/';
 
 module.exports = {
     root: true,
+    ignorePatterns: ['**/*.d.ts'],
     parserOptions: {
         parser: '@babel/eslint-parser',
         sourceType: 'module',
     },
-    extends: [
-        'plugin:vue/recommended',
-        '@vue/airbnb',
-        'standard',
-    ],
+    extends: ['plugin:vue/recommended', '@vue/airbnb', 'standard'],
     env: {
         browser: true,
     },
     // required to lint *.vue files
-    plugins: [
-        'rulesdir',
-        'vue',
-    ],
+    plugins: ['rulesdir', 'vue'],
     // add your custom rules here
     rules: {
         'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
         'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
         'rulesdir/class-name-prefix': 'warn',
         'class-methods-use-this': 0,
-        'comma-dangle': ['error', {
-            arrays: 'always-multiline',
-            objects: 'always-multiline',
-            imports: 'never',
-            exports: 'never',
-            functions: 'ignore',
-        }],
+        'comma-dangle': [
+            'error',
+            {
+                arrays: 'always-multiline',
+                objects: 'always-multiline',
+                imports: 'never',
+                exports: 'never',
+                functions: 'ignore',
+            },
+        ],
         'import/extensions': 0,
         'import/no-cycle': 0,
         'import/no-extraneous-dependencies': 0,
@@ -78,13 +75,12 @@ module.exports = {
         'vuejs-accessibility/label-has-for': 0,
         'vuejs-accessibility/mouse-events-have-key-events': 0,
     },
-    overrides: [{
-        files: [
-            '**/__tests__/*.{j,t}s?(x)',
-            '**/tests/unit/**/*.spec.{j,t}s?(x)',
-        ],
-        env: {
-            jest: true,
+    overrides: [
+        {
+            files: ['**/__tests__/*.{j,t}s?(x)', '**/tests/unit/**/*.spec.{j,t}s?(x)'],
+            env: {
+                jest: true,
+            },
         },
-    }],
+    ],
 };

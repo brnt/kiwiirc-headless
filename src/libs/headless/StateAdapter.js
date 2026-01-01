@@ -416,9 +416,9 @@ export default class StateAdapter {
             return;
         }
 
-        buffer.latest_messages = buffer.latest_messages.filter((msg) => {
-            return !msg.time || msg.time < startTime || msg.time > endTime;
-        });
+        buffer.latest_messages = buffer.latest_messages.filter(
+            (msg) => !msg.time || msg.time < startTime || msg.time > endTime
+        );
     }
 
     /**

@@ -1,7 +1,8 @@
 .DS_Store
 srcdocs/
-dist/
+dist/*
 !dist/headless/
+!dist/headless/**
 node_modules/
 src/res/locales/available.json
 static/config.local.json
