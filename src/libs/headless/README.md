@@ -55,12 +55,39 @@ const client = createIrcClient({
 
 ### Using npm/yarn from Git repository
 
-Install directly from the GitHub repository:
+**Important:** Neither npm nor Yarn Classic (v1) support the `#subdirectory=` syntax. Use one of these options:
+
+#### Option A: Use Yarn v2+ (Berry) - Recommended
+
+If you're using Yarn v2 or later (Berry), the subdirectory syntax is supported. **Note:** Yarn Berry requires the package name to be specified:
 
 ```bash
-npm install git+https://github.com/brnt/kiwiirc-headless.git#subdirectory=src/libs/headless
-# or
-yarn add git+https://github.com/brnt/kiwiirc-headless.git#subdirectory=src/libs/headless
+# With SSH (recommended for private repos)
+yarn add @kiwiirc/headless-client@git+ssh://git@github.com/brnt/kiwiirc-headless.git#subdirectory=src/libs/headless
+
+# With HTTPS (requires authentication for private repos)
+yarn add @kiwiirc/headless-client@git+https://github.com/brnt/kiwiirc-headless.git#subdirectory=src/libs/headless
+```
+
+**Upgrading to Yarn Berry:**
+```bash
+# Enable Corepack (comes with Node.js 16.9+)
+corepack enable
+
+# Upgrade your project to Yarn Berry
+yarn set version berry
+```
+
+#### Option B: Use GitPkg (Works with npm and Yarn Classic)
+
+GitPkg creates a tarball of the subdirectory that package managers can install. **Note:** Only works with public repositories.
+
+```bash
+# With npm
+npm install https://gitpkg.now.sh/brnt/kiwiirc-headless/src/libs/headless?main
+
+# With Yarn Classic
+yarn add https://gitpkg.now.sh/brnt/kiwiirc-headless/src/libs/headless?main
 ```
 
 **Note:** Make sure the built files (`dist/headless/kiwi-headless-client.js`) are committed to the repository, or build them first:
@@ -68,13 +95,11 @@ yarn add git+https://github.com/brnt/kiwiirc-headless.git#subdirectory=src/libs/
 ```bash
 # In the kiwiirc-headless repository
 npm run build:headless:prod
+git add dist/headless/
+git commit -m "Add headless client build files"
 ```
 
-Then in your Preact project:
-
-```bash
-npm install git+https://github.com/brnt/kiwiirc-headless.git#subdirectory=src/libs/headless
-```
+Then in your Preact project, install using one of the methods above.
 
 ### Using npm/yarn (if published to npm)
 
